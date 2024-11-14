@@ -1,79 +1,83 @@
-from pyamaze import maze, agent, textLabel  
-from queue import PriorityQueue  
+from pyamaze import maze, agent, textLabel
+from queue import PriorityQueue
+import tkinter as tk  
+import time  
 
-# Function to calculate heuristic (Manhattan distance) between two cells
+#calculate Manhattan distance as the heuristic for A* search
 def heuristic(cell1, cell2):
-    x1, y1 = cell1  # Coordinates of the first cell
-    x2, y2 = cell2  # Coordinates of the second cell
-    return abs(x1 - x2) + abs(y1 - y2)  # Return the sum of the absolute differences of the coordinates
+    return abs(cell1[0] - cell2[0]) + abs(cell1[1] - cell2[1])
 
-# A* algorithm to find the shortest path in the maze
-def a_star_search(maze_obj):
-    # Start cell is the bottom-right corner of the maze
-    start = (maze_obj.rows, maze_obj.cols)
-    
-    # Initialize g-scores (cost from start to the current cell)
-    g_scores = {cell: float('inf') for cell in maze_obj.grid}
-    g_scores[start] = 0  # Start cell has a g-score of 0
-    
-    # Initialize f-scores (estimated total cost from start to goal)
-    f_scores = {cell: float('inf') for cell in maze_obj.grid}
-    f_scores[start] = heuristic(start, (1, 1))  # Calculate f-score for the start cell
-    
-    # Create a priority queue for open list and add the start cell
-    open_list = PriorityQueue()
-    open_list.put((f_scores[start], start))
-    
-    # Dictionary to store the path
-    path_taken = {}
+#implementation of A* algorithm for pathfinding in the maze
+def a_star_search(maze_instance):
+    start = (maze_instance.rows, maze_instance.cols)  
+    goal = (1, 1)  # Goal at top-left corner
 
-    # Continue searching until the open list is empty
-    while not open_list.empty():
-        current = open_list.get()[1]  # Get the cell with the lowest f-score from the open list
-        
-        # If the current cell is the goal cell, stop searching
-        if current == (1, 1):  # Goal is at the top-left corner (1,1)
+    #initialize cost maps for g-score(distance from start) and f-score(estimated total cost)
+    g_score = {cell: float('inf') for cell in maze_instance.grid}
+    f_score = {cell: float('inf') for cell in maze_instance.grid}
+    g_score[start] = 0
+    f_score[start] = heuristic(start, goal)
+
+    #priority queue to manage exploration of nodes
+    open_set = PriorityQueue()
+    open_set.put((f_score[start], start))
+
+    #dictionary to keep track of the path
+    came_from = {}
+
+    while not open_set.empty():
+        current = open_set.get()[1]
+
+        #if we reach the goal we exit the loop
+        if current == goal:
             break
 
-        # Check each possible direction (East, South, North, West) from the current cell
+        #explore neighbors(east, south, north, west)
         for direction in 'ESNW':
-            if maze_obj.maze_map[current][direction] == True:  # Check if the path in this direction is open
-                # Determine the next cell based on the direction
+            if maze_instance.maze_map[current][direction]:
                 if direction == 'E':
-                    next_cell = (current[0], current[1] + 1)
+                    neighbor = (current[0], current[1] + 1)
                 elif direction == 'W':
-                    next_cell = (current[0], current[1] - 1)
+                    neighbor = (current[0], current[1] - 1)
                 elif direction == 'N':
-                    next_cell = (current[0] - 1, current[1])
+                    neighbor = (current[0] - 1, current[1])
                 elif direction == 'S':
-                    next_cell = (current[0] + 1, current[1])
-                
-                # Calculate temporary g-score for the next cell
-                temp_g = g_scores[current] + 1
-                
-                # Calculate temporary f-score for the next cell
-                temp_f = temp_g + heuristic(next_cell, (1, 1))
+                    neighbor = (current[0] + 1, current[1])
 
-                # If the calculated f-score is better than the current f-score for the next cell
-                if temp_f < f_scores[next_cell]:
-                    g_scores[next_cell] = temp_g  # Update g-score
-                    f_scores[next_cell] = temp_f  # Update f-score
-                    open_list.put((temp_f, next_cell))  # Add next cell to the open list
-                    path_taken[next_cell] = current  # Record the path
+                tentative_g_score = g_score[current] + 1
 
-    # Reconstruct the path by backtracking from the goal cell to the start
-    final_path = {}
-    cell = (1, 1)  # Start at the goal cell
-    while cell != start:
-        final_path[path_taken[cell]] = cell # Add cell and its parent to the path
-        cell = path_taken[cell]# Move to the parent cell
-    
-    return final_path# Return the reconstructed path
+                if tentative_g_score < g_score[neighbor]:
+                    g_score[neighbor] = tentative_g_score
+                    f_score[neighbor] = tentative_g_score + heuristic(neighbor, goal)
+                    open_set.put((f_score[neighbor], neighbor))
+                    came_from[neighbor] = current
 
-m = maze(6, 9)
-m.CreateMaze()
-path = a_star_search(m)
-agent_obj = agent(m, footprints=True, filled=True)
-m.tracePath({agent_obj: path})
-label = textLabel(m, 'A* Path Length', len(path) + 1)
-m.run()
+    #reconstruct the path from goal to start
+    path = {}
+    step = goal
+    while step != start:
+        path[came_from[step]] = step
+        step = came_from[step]
+    return path
+
+def run_maze(rows, cols):
+    maze_instance = maze(rows, cols)
+    maze_instance.CreateMaze()
+
+    path = a_star_search(maze_instance)
+    agent_instance = agent(maze_instance, footprints=True, filled=True, shape='arrow')
+
+    #im adding delay for a smooth visual representation of the agent's path you can skip it if you want to....
+    for cell in path:
+        maze_instance.tracePath({agent_instance: [cell]}, delay=500)
+        time.sleep(0.1)
+
+    textLabel(maze_instance, 'A* Path Length', len(path) + 1)
+
+    maze_instance._win.focus_force()
+
+    maze_instance.run()
+rows = int(input("Enter the number of rows for the maze: "))
+cols = int(input("Enter the number of columns for the maze: "))
+
+run_maze(rows, cols)
