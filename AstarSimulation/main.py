@@ -10,7 +10,7 @@ def heuristic(cell1, cell2):
 #implementation of A* algorithm for pathfinding in the maze
 def a_star_search(maze_instance):
     start = (maze_instance.rows, maze_instance.cols)  
-    goal = (1, 1)  # Goal at top-left corner
+    goal = (1, 1)  #goal at top-left corner
 
     #initialize cost maps for g-score(distance from start) and f-score(estimated total cost)
     g_score = {cell: float('inf') for cell in maze_instance.grid}
